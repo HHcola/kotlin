@@ -156,10 +156,9 @@ class KotlinLanguageInjector(
     private fun findInjectionInfo(place: KtElement, originalHost: Boolean = true): InjectionInfo? {
         return injectWithExplicitCodeInstruction(place)
                ?: injectWithCall(place)
-               ?: injectInAnnotationCall(place)
+               ?: injectWithAnnotationEntry(place)
                ?: injectWithReceiver(place)
                ?: injectWithVariableUsage(place, originalHost)
-               ?: injectWithAnnotationEntry(place)
     }
 
     private fun injectWithExplicitCodeInstruction(host: KtElement): InjectionInfo? {
@@ -266,16 +265,6 @@ class KotlinLanguageInjector(
         return null
     }
 
-    private fun injectInAnnotationCall(host: KtElement): InjectionInfo? {
-        val argument = host.parent as? KtValueArgument ?: return null
-        val annotationEntry = argument.parent.parent as? KtAnnotationEntry ?: return null
-        val callDescriptor = annotationEntry.getResolvedCall(annotationEntry.analyze())?.candidateDescriptor
-        val psiClass = (callDescriptor as? DeclarationDescriptorWithSource)?.source?.getPsi() as? PsiClass ?: return null
-        val argumentName = argument.getArgumentName()?.asName?.identifier ?: "value"
-        val method = psiClass.findMethodsByName(argumentName, false).singleOrNull() ?: return null
-        return findInjection(method, Configuration.getInstance().getInjections(JavaLanguageInjectionSupport.JAVA_SUPPORT_ID))
-    }
-
     private fun injectionForJavaMethod(argument: KtValueArgument, javaMethod: PsiMethod): InjectionInfo? {
         val argumentIndex = (argument.parent as KtValueArgumentList).arguments.indexOf(argument)
         val psiParameter = javaMethod.parameterList.parameters.getOrNull(argumentIndex) ?: return null
@@ -321,7 +310,7 @@ class KotlinLanguageInjector(
 
     private fun injectWithAnnotationEntry(host: KtElement): InjectionInfo? {
         val argument = host.parent as? KtValueArgument ?: return null
-        val annotationEntry = PsiTreeUtil.getParentOfType(host, KtAnnotationEntry::class.java) ?: return null
+        val annotationEntry = argument.parent?.parent as? KtAnnotationEntry ?: return null
         if (isAnalyzeOff(host.project)) return null
 
         val calleeReference = annotationEntry.calleeExpression?.constructorReferenceExpression?.mainReference

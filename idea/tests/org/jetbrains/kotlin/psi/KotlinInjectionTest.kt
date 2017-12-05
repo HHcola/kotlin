@@ -411,46 +411,6 @@ class KotlinInjectionTest : AbstractInjectionTest() {
             )
     )
 
-    fun testJavaAnnotationsPattern() {
-        val customInjection = BaseInjection("java")
-        customInjection.injectedLanguageId = RegExpLanguage.INSTANCE.id
-        val elementPattern = customInjection.compiler.createElementPattern(
-                """psiMethod().withName("value").withParameters().definedInClass("Matches")""",
-                "temp rule")
-        customInjection.setInjectionPlaces(InjectionPlace(elementPattern, true))
-
-        try {
-            Configuration.getInstance().replaceInjections(listOf(customInjection), listOf(), true)
-
-            doInjectionPresentTest(
-                    javaText = """
-                        @interface Matches { String value(); }
-                    """,
-                    text = """
-                        @Matches("[A-Z]<caret>[a-z]+")
-                        val name = "John"
-                    """,
-                    languageId = RegExpLanguage.INSTANCE.id,
-                    unInjectShouldBePresent = false
-            )
-
-            doInjectionPresentTest(
-                    javaText = """
-                        @interface Matches { String value(); }
-                    """,
-                    text = """
-                        @Matches(value = "[A-Z]<caret>[a-z]+")
-                        val name = "John"
-                    """,
-                    languageId = RegExpLanguage.INSTANCE.id,
-                    unInjectShouldBePresent = false
-            )
-        }
-        finally {
-            Configuration.getInstance().replaceInjections(listOf(), listOf(customInjection), true)
-        }
-    }
-
     fun testKotlinAnnotationsPattern() {
         val customInjection = BaseInjection("kotlin")
         customInjection.injectedLanguageId = RegExpLanguage.INSTANCE.id
@@ -505,11 +465,12 @@ class KotlinInjectionTest : AbstractInjectionTest() {
                       @InHtml("<htm<caret>l></html>")
                       fun foo() {
                       }
-                    """, """
+                    """,
+                    """
                     @interface InHtml {
                         String value();
                     }
-                    """.trimIndent(),
+                    """,
                     HTMLLanguage.INSTANCE.id,
                     unInjectShouldBePresent = false
             )
@@ -532,15 +493,44 @@ class KotlinInjectionTest : AbstractInjectionTest() {
 
             doInjectionPresentTest(
                     """
-                      @InHtml(html = "<htm<caret>l></html>")
-                      fun foo() {
-                      }
-                    """, """
+                    @InHtml(html = "<htm<caret>l></html>")
+                    fun foo() {
+                    }
+                    """,
+                    """
                     @interface InHtml {
                         String html();
                     }
-                    """.trimIndent(),
+                    """,
                     HTMLLanguage.INSTANCE.id,
+                    unInjectShouldBePresent = false
+            )
+        }
+        finally {
+            Configuration.getInstance().replaceInjections(listOf(), listOf(customInjection), true)
+        }
+    }
+
+    fun testInjectionInJavaAnnotationsWithValueParameter() {
+        val customInjection = BaseInjection("java")
+        customInjection.injectedLanguageId = RegExpLanguage.INSTANCE.id
+        val elementPattern = customInjection.compiler.createElementPattern(
+                """psiMethod().withName("value").withParameters().definedInClass("Matches")""",
+                "temp rule")
+        customInjection.setInjectionPlaces(InjectionPlace(elementPattern, true))
+
+        try {
+            Configuration.getInstance().replaceInjections(listOf(customInjection), listOf(), true)
+
+            doInjectionPresentTest(
+                    """
+                    @Matches(value = "[A-Z]<caret>[a-z]+")
+                    val name = "John"
+                    """,
+                    """
+                    @interface Matches { String value(); }
+                    """,
+                    languageId = RegExpLanguage.INSTANCE.id,
                     unInjectShouldBePresent = false
             )
         }
